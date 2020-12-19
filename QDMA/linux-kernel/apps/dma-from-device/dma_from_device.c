@@ -20,6 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <errno.h>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -158,6 +159,7 @@ static int test_dma(char *devname, uint64_t addr, uint64_t size,
 	long total_time = 0;
 	float result;
 	float avg_time = 0;
+	int rv;
 
 	if (fpga_fd < 0) {
                 fprintf(stderr, "unable to open device %s, %d.\n",
@@ -179,10 +181,11 @@ static int test_dma(char *devname, uint64_t addr, uint64_t size,
                 }
 	}
 
-	posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
-	if (!allocated) {
-		fprintf(stderr, "OOM %lu.\n", size + 4096);
-		rc = -ENOMEM;
+	rv = posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
+	if (rv) {
+		fprintf(stderr, "%s: posix_memalign failed with %d: %s\n", __func__, rv,
+				strerror(rv));
+		rc = -rv;
 		goto out;
 	}
 

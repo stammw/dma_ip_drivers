@@ -1062,10 +1062,11 @@ static int qdmautils_read(struct queue_info *q_info,
 	}
 
 	offset = 0;
-	posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
-	if (!allocated) {
-		printf("Error: OOM %u.\n", size + 4096);
-		ret = -ENOMEM;
+	ret = posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
+	if (ret) {
+		fprintf(stderr, "%s: posix_memalign failed with %d: %s\n", __func__,
+				ret, strerror(ret));
+		ret = -ret;
 		goto out;
 	}
 	buffer = allocated + offset;
@@ -1125,10 +1126,11 @@ static int qdmautils_write(struct queue_info *q_info,
 	}
 
 	offset = 0;
-	posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
-	if (!allocated) {
-		printf("Error: OOM %u.\n", size + 4096);
-		ret = -ENOMEM;
+	ret = posix_memalign((void **)&allocated, 4096 /*alignment */ , size + 4096);
+	if (ret) {
+		fprintf(stderr, "%s: posix_memalign failed with %d: %s\n", __func__,
+				ret, strerror(ret));
+		ret = -ret;
 		goto out;
 	}
 

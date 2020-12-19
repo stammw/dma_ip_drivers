@@ -726,7 +726,8 @@ static void parse_config_file(const char *cfg_fname)
 	unsigned int dir_factor = 1;
 	char rng_sz[100] = {'\0'};
 	char rng_sz_path[512] = {'\0'};
-    	int rng_sz_fd, ret = 0;
+	int rng_sz_fd, ret = 0;
+	int rv;
 
 	fp = fopen(cfg_fname, "r");
 	if (fp == NULL)
@@ -863,7 +864,12 @@ static void parse_config_file(const char *cfg_fname)
 	snprintf(rng_sz_path, 200,"dma-ctl %s%05x global_csr | grep Global| cut -d : -f 2 > glbl_rng_sz",
 			 dmactl_dev_prefix_str, (pci_bus << 12) | (pci_dev << 4) | pf_start);
 	printf("%s\n", rng_sz_path);
-	system(rng_sz_path);
+	rv = system(rng_sz_path);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				rng_sz_path, rv, strerror(rv));
+		return;
+	}
 	memset(rng_sz_path, 0, 200);
 	snprintf(rng_sz_path, 200, "glbl_rng_sz");
 
@@ -936,6 +942,7 @@ static void io_proc_cleanup(struct io_info *_info)
 {
 	int s;
 	char reg_cmd[100] = {'\0'};
+	int rv;
 
 	if (dump_en) {
 		s = qdma_dump_queue(vf_perf, _info);
@@ -950,7 +957,12 @@ static void io_proc_cleanup(struct io_info *_info)
 	}
 	_info->q_started = 0;
 
-	system(reg_cmd);
+	rv = system(reg_cmd);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				reg_cmd, rv, strerror(rv));
+		return;
+	}
 
 	s = qdma_del_queue(vf_perf, _info);
 	if (s < 0) {
@@ -964,12 +976,14 @@ static void *io_thread(void *argp)
 
 	struct io_info *_info = (struct io_info *)argp;
 	char *buffer = NULL;
+	int rv;
 
 	unsigned int io_sz = _info->pkt_sz;
 
-	posix_memalign((void **)&buffer, 4096 /*alignment */ , io_sz + 4096);
-	if (!buffer) {
-		printf("OOM \n");
+	rv = posix_memalign((void **)&buffer, 4096 /*alignment */ , io_sz + 4096);
+	if (rv) {
+		fprintf(stderr, "%s: posix_memalign failed with %d: %s\n", __func__, rv,
+				strerror(rv));
 		return NULL;
 	}
 
@@ -985,8 +999,16 @@ static void *io_thread(void *argp)
 				break;
 		}
 
-		write(_info->fd, buffer ,io_sz);
-		read(_info->fd, buffer ,io_sz);
+		rv = write(_info->fd, buffer, io_sz);
+		if (rv < io_sz) {
+			fprintf(stderr, "%s: write failed with %d: %s\n", __func__, rv, strerror(errno));
+			return NULL;
+		}
+		rv = read(_info->fd, buffer, io_sz);
+		if (rv < io_sz) {
+			fprintf(stderr, "%s: read failed with %d: %s\n", __func__, rv, strerror(errno));
+			return NULL;
+		}
 
 
 	} while (tsecs && !force_exit);
@@ -1037,14 +1059,25 @@ static int setup_thrd_env(struct io_info *_info, unsigned char is_new_fd)
 static void dump_result()
 {
 	char reg_cmd[100] = {'\0'};
+	int rv;
 
 	snprintf(reg_cmd, 100, "dma-ctl %s%05x stat",
 		 dmactl_dev_prefix_str, info[0].pf);
-	system(reg_cmd);
+	rv = system(reg_cmd);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				reg_cmd, rv, strerror(rv));
+		return;
+	}
 	memset(reg_cmd, 0, 100);
 	snprintf(reg_cmd, 100, "dma-ctl %s%05x stat clear",
 		 dmactl_dev_prefix_str, info[0].pf);
-	system(reg_cmd);
+	rv = system(reg_cmd);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				reg_cmd, rv, strerror(rv));
+		return;
+	}
 	memset(reg_cmd, 0, 100);
 
 }

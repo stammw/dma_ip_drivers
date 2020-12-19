@@ -773,6 +773,7 @@ int dmaxfer_perf_run(struct dmaxfer_io_info *list,
 	int shmid;
 	int base_pid;
 	int *child_pid_lst;
+	int rv;
 
 #if DATA_VALIDATION
 	for (i = 0; i < 2*1024; i++)
@@ -787,7 +788,12 @@ int dmaxfer_perf_run(struct dmaxfer_io_info *list,
 
 	snprintf(aio_max_nr_cmd, 100, "echo %u > /proc/sys/fs/aio-max-nr",
 		 aio_max_nr);
-	system(aio_max_nr_cmd);
+	rv = system(aio_max_nr_cmd);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				aio_max_nr_cmd, rv, strerror(rv));
+		return -rv;
+	}
 
 	handle = (struct dmaxfer_perf_handle *)calloc(1, sizeof(struct dmaxfer_perf_handle));
 	if (!handle)

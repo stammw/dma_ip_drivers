@@ -711,7 +711,8 @@ static void parse_config_file(const char *cfg_fname)
 	unsigned int dir_factor = 1;
 	char rng_sz[100] = {'\0'};
 	char rng_sz_path[200] = {'\0'};
-    	int rng_sz_fd, ret = 0;
+	int rng_sz_fd, ret = 0;
+	int rv;
 
 	fp = fopen(cfg_fname, "r");
 	if (fp == NULL)
@@ -965,7 +966,12 @@ static void parse_config_file(const char *cfg_fname)
 
 	snprintf(rng_sz_path, 200,"dma-ctl %s%05x global_csr | grep \"Global Ring\"| cut -d \":\" -f 2 > glbl_rng_sz",
 			 dmactl_dev_prefix_str, (pci_bus << 12) | (pci_dev << 4) | pf_start);
-	system(rng_sz_path);
+	rv = system(rng_sz_path);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				rng_sz_path, rv, strerror(rv));
+		exit(rv);
+	}
 	snprintf(rng_sz_path, 200, "glbl_rng_sz");
 
 	rng_sz_fd = open(rng_sz_path, O_RDONLY);
@@ -2037,6 +2043,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	unsigned int aio_max_nr = 0xFFFFFFFF;
 	char aio_max_nr_cmd[100] = {'\0'};
+	int rv;
 #if THREADS_SET_CPU_AFFINITY
 	cpu_set_t set;
 #endif
@@ -2072,7 +2079,12 @@ int main(int argc, char *argv[])
 	atexit(cleanup);
 
 	snprintf(aio_max_nr_cmd, 100, "echo %u > /proc/sys/fs/aio-max-nr", aio_max_nr);
-	system(aio_max_nr_cmd);
+	rv = system(aio_max_nr_cmd);
+	if (rv) {
+		fprintf(stderr, "%s: cmd \"%s\" failed with %d: %s\n", __func__,
+				aio_max_nr_cmd, rv, strerror(rv));
+		return -rv;
+	}
 
 	printf("dmautils(%u) threads\n", num_thrds);
 	child_pid_lst = calloc(num_thrds, sizeof(int));
