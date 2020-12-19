@@ -61,6 +61,15 @@ static void sgl_dump(struct qdma_sw_sg *sgl, unsigned int sgcnt)
 }
 #endif
 
+#ifdef __ARCH_ARM
+# see https://stackoverflow.com/questions/40454157/is-there-an-equivalent-instruction-to-rdtsc-in-arm/40455065
+u64 rdtsc_gettime(void)
+{
+	u32 pmccntr;
+    asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(pmccntr));
+	return ((u64)pmccntr) * 64;
+}
+#else
 u64 rdtsc_gettime(void)
 {
 	unsigned int low, high;
@@ -68,6 +77,7 @@ u64 rdtsc_gettime(void)
 	asm volatile("rdtscp" : "=a" (low), "=d" (high));
 	return low | ((u64)high) << 32;
 }
+#endif
 
 int qdma_sgl_find_offset(struct qdma_request *req, struct qdma_sw_sg **sg_p,
 			unsigned int *sg_offset)
