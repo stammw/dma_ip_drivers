@@ -2776,8 +2776,7 @@ int xlnx_nl_init(void)
 {
 	int rv;
 #ifdef __GENL_REG_FAMILY_OPS_FUNC__
-	rv = genl_register_family_with_ops(&xnl_family,
-			xnl_ops, ARRAY_SIZE(xnl_ops));
+	rv = genl_register_family_with_ops(&xnl_family, xnl_ops);
 #else
 	rv = genl_register_family(&xnl_family);
 #endif
