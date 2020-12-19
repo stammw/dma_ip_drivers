@@ -1053,7 +1053,7 @@ static int qdmautils_read(struct queue_info *q_info,
 
 	size = pkt_sz;
 
-	outfile_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC);
+	outfile_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
 	if (outfile_fd < 0) {
 		printf("Error: unable to open/create output file %s, ret :%d\n",
 				output_file, outfile_fd);
