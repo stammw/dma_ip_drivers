@@ -1,4 +1,5 @@
-SHELL = /bin/bash
+BASH := $(shell which bash)
+SHELL = $(BASH)
 
 CFLAGS += -g
 #CFLAGS += -O2 -fno-inline -Wall -Wstrict-prototypes
@@ -34,7 +35,7 @@ dma-to-device:
 	@echo "###########################";
 	$(MAKE) -C dma-to-device
 	@cp -f $(dma-to-device_dir)/dma-to-device $(bin_dir)	
-	
+
 .PHONY: dma-xfer
 dma-xfer:
 	@echo "###########################";

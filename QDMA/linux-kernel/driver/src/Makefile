@@ -1,4 +1,5 @@
-SHELL = /bin/bash
+BASH := $(shell which bash)
+SHELL = $(BASH)
 
 export topdir
 export bin_dir

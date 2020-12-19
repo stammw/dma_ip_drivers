@@ -1,4 +1,5 @@
-SHELL = /bin/bash
+BASH := $(shell which bash)
+SHELL = $(BASH)
 
 #
 # makefile parameters:
