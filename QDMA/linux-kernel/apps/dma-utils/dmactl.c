@@ -42,7 +42,7 @@ struct xnl_cb {
 
 struct xnl_gen_msg {
 	struct xnl_hdr hdr;
-	char data[0];
+	char *data;
 };
 
 void xnl_close(struct xnl_cb *cb)
@@ -139,9 +139,10 @@ static int xnl_connect(struct xnl_cb *cb, int vf, void (*log_err)(const char *))
 {
 	int fd;
 	struct sockaddr_nl addr;
-	struct xnl_gen_msg *msg = xnl_msg_alloc(0, log_err);
-	struct xnl_hdr *hdr = &msg->hdr;
+	struct xnl_gen_msg *msg;
+	struct xnl_hdr *hdr;
 	struct nlattr *attr;
+	int data_len;
 	int rv = -1;
 
 	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
@@ -150,7 +151,7 @@ static int xnl_connect(struct xnl_cb *cb, int vf, void (*log_err)(const char *))
 			log_err("nl socket err");
 		rv = fd;
 		goto out;
-        }
+	}
 	cb->fd = fd;
 
 	memset(&addr, 0, sizeof(struct sockaddr_nl));
@@ -162,27 +163,35 @@ static int xnl_connect(struct xnl_cb *cb, int vf, void (*log_err)(const char *))
 		goto out;
 	}
 
+	if (vf) {
+		data_len = strlen(XNL_NAME_VF) + 1;
+	} else {
+		data_len = strlen(XNL_NAME_PF) + 1;
+	}
+
+    msg = xnl_msg_alloc(data_len, log_err);
+	hdr = &(msg->hdr);
+
 	hdr->n.nlmsg_type = GENL_ID_CTRL;
 	hdr->n.nlmsg_flags = NLM_F_REQUEST;
 	hdr->n.nlmsg_pid = getpid();
 	hdr->n.nlmsg_len = NLMSG_LENGTH(GENL_HDRLEN);
 
-        hdr->g.cmd = CTRL_CMD_GETFAMILY;
-        hdr->g.version = XNL_VERSION;
+	hdr->g.cmd = CTRL_CMD_GETFAMILY;
+	hdr->g.version = XNL_VERSION;
 
-	attr = (struct nlattr *)(hdr + 1);
+	attr = (struct nlattr *) msg->data;
 	attr->nla_type = CTRL_ATTR_FAMILY_NAME;
 	cb->family = CTRL_ATTR_FAMILY_NAME;
 
 	if (vf) {
-        	attr->nla_len = strlen(XNL_NAME_VF) + 1 + NLA_HDRLEN;
-        	strcpy((char *)(attr + 1), XNL_NAME_VF);
-
+		attr->nla_len = NLA_HDRLEN + data_len;
+		strcpy(((char *)attr) + NLA_HDRLEN, XNL_NAME_VF);
 	} else {
-        	attr->nla_len = strlen(XNL_NAME_PF) + 1 + NLA_HDRLEN;
-        	strcpy((char *)(attr + 1), XNL_NAME_PF);
+		attr->nla_len = data_len + NLA_HDRLEN;
+		strcpy(((char *)attr) + NLA_HDRLEN, XNL_NAME_PF);
 	}
-        hdr->n.nlmsg_len += NLMSG_ALIGN(attr->nla_len);
+	hdr->n.nlmsg_len += NLMSG_ALIGN(attr->nla_len);
 
 	rv = xnl_send(cb, hdr, log_err);
 	if (rv < 0)
