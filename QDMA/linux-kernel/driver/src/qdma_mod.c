@@ -1105,10 +1105,15 @@ int xpdev_queue_delete(struct xlnx_pci_dev *xpdev, unsigned int qidx, u8 q_type,
 	if (q_type != Q_CMPT) {
 		spin_lock(&xpdev->cdev_lock);
 		qdata->xcdev->dir_init &= ~(1 << (q_type ? 1 : 0));
-
-		if (!qdata->xcdev->dir_init)
-			qdma_cdev_destroy(qdata->xcdev);
 		spin_unlock(&xpdev->cdev_lock);
+
+		if (!qdata->xcdev->dir_init) {
+			spin_unlock(&xpdev->cdev_lock);
+			qdma_cdev_destroy(qdata->xcdev);
+		} else {
+			spin_unlock(&xpdev->cdev_lock);
+		}
+
 	}
 
 	memset(qdata, 0, sizeof(*qdata));
